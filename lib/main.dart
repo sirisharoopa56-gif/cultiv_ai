@@ -7,6 +7,7 @@ import 'screens/my_farm_screen.dart';
 import 'screens/ai_advisor_screen.dart';
 
 void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
   // Initialize flutter_dotenv to load environment variables
   try {
     await dotenv.load(fileName: '.env');
