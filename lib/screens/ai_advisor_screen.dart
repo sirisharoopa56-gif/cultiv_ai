@@ -109,7 +109,7 @@ class _AIAdvisorScreenState extends State<AIAdvisorScreen> {
           children: [
             const Text(
               'AI Crop Advisor',
-              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.green),
             ),
             const SizedBox(height: 8),
             const Text(
@@ -158,7 +158,7 @@ class _AIAdvisorScreenState extends State<AIAdvisorScreen> {
         // Crop Recommendations
         const Text(
           'Recommended Crops',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color : Colors.green),
         ),
         const SizedBox(height: 12),
         if (_recommendations!.isEmpty)

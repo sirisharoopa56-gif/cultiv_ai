@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import '../services/auth_service.dart';
 
 /// Simple data model representing a crop plot (serializable).
 class CropPlot {
@@ -38,8 +39,10 @@ class MyFarmScreen extends StatefulWidget {
 }
 
 class _MyFarmScreenState extends State<MyFarmScreen> {
+  final AuthService _authService = AuthService();
   late Box<dynamic> _plotsBox;
   List<CropPlot> _plots = [];
+  String? _userId;
 
   @override
   void initState() {
@@ -47,9 +50,17 @@ class _MyFarmScreenState extends State<MyFarmScreen> {
     _initializeHive();
   }
 
-  /// Initialize Hive box and load plots.
+  /// Initialize Hive box and load plots for the current user.
   Future<void> _initializeHive() async {
-    _plotsBox = await Hive.openBox('crop_plots');
+    _userId = await _authService.getActiveUserId();
+    if (_userId == null || _userId!.isEmpty) {
+      if (mounted) {
+        Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
+      }
+      return;
+    }
+
+    _plotsBox = await _authService.getUserDataBox('crop_plots');
     _loadPlots();
   }
 

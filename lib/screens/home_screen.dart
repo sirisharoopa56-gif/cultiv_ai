@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'ai_advisor_screen.dart';
+import '../services/auth_service.dart';
 import '../services/location_service.dart';
 import '../services/weather_service.dart';
 
@@ -14,6 +15,7 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  final AuthService _authService = AuthService();
   late Box<dynamic> _plotsBox;
   int _activePlots = 0;
   WeatherData? _weatherData;
@@ -30,7 +32,15 @@ class _HomeScreenState extends State<HomeScreen> {
   /// Load farm plot count from Hive.
   Future<void> _loadFarmStats() async {
     try {
-      _plotsBox = await Hive.openBox('crop_plots');
+      final userId = await _authService.getActiveUserId();
+      if (userId == null || userId.isEmpty) {
+        if (mounted) {
+          setState(() => _activePlots = 0);
+        }
+        return;
+      }
+
+      _plotsBox = await _authService.getUserDataBox('crop_plots');
       if (mounted) {
         setState(() {
           _activePlots = _plotsBox.length;

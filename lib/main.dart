@@ -5,6 +5,8 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'screens/home_screen.dart';
 import 'screens/my_farm_screen.dart';
 import 'screens/ai_advisor_screen.dart';
+import 'screens/login_screen.dart';
+import 'services/auth_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -35,7 +37,11 @@ class IrrigationCultivatorApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.green),
         useMaterial3: true,
       ),
-      home: const MainNavigationScreen(),
+      initialRoute: '/login',
+      routes: {
+        '/login': (context) => const LoginScreen(),
+        '/home': (context) => const MainNavigationScreen(),
+      },
     );
   }
 }
@@ -48,6 +54,7 @@ class MainNavigationScreen extends StatefulWidget {
 }
 
 class _MainNavigationScreenState extends State<MainNavigationScreen> {
+  final AuthService _authService = AuthService();
   int _selectedIndex = 0;
 
   static const List<String> _titles = ['Home Dashboard', 'My Farm', 'AI Advisor'];
@@ -111,6 +118,17 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
             title: const Text('AI Advisor'),
             selected: _selectedIndex == 2,
             onTap: () => _onDrawerItemTapped(2),
+          ),
+          const Divider(),
+          ListTile(
+            leading: const Icon(Icons.logout),
+            title: const Text('Logout'),
+            onTap: () async {
+              await _authService.logout();
+              if (context.mounted) {
+                Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
+              }
+            },
           ),
         ],
       ),
