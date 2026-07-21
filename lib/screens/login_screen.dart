@@ -8,7 +8,9 @@ class LoginScreen extends StatefulWidget {
   State<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStateMixin {
+  late final AnimationController _marqueeController;
+  late final Animation<Offset> _marqueeAnimation;
   final _formKey = GlobalKey<FormState>();
   final _fullNameController = TextEditingController();
   final _usernameController = TextEditingController();
@@ -17,6 +19,31 @@ class _LoginScreenState extends State<LoginScreen> {
   final _authService = AuthService();
   bool _isLoading = false;
   bool _isLogin = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _marqueeController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 15),
+    )..repeat();
+
+    _marqueeAnimation = Tween<Offset>(
+      begin: const Offset(1.0, 0.0),
+      end: const Offset(-1.0, 0.0),
+    ).animate(
+      CurvedAnimation(
+        parent: _marqueeController,
+        curve: Curves.linear,
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _marqueeController.dispose();
+    super.dispose();
+  }
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
@@ -64,11 +91,51 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        toolbarHeight: 80,
+        backgroundColor: Colors.green,
+        elevation: 0,
+        automaticallyImplyLeading: false,
+        titleSpacing: 16,
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'CULTIV_AI',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 27,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 1.2,
+              ),
+            ),
+            const SizedBox(height: 6),
+            ClipRect(
+              child: SizedBox(
+                height: 23,
+                width: MediaQuery.of(context).size.width * 1,
+                child: SlideTransition(
+                  position: _marqueeAnimation,
+                  child: const Text(
+                    'Smart Farming Companion',
+                    style: TextStyle(
+                      color: Colors.white70,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
       body: Stack(
         children: [
           Positioned.fill(
             child: Image.network(
-              'https://as2.ftcdn.net/jpg/01/25/57/87/1000_F_125578756_ApLQoDFgYC0lvoc1nyEiDgBMziNrMV6N.jpg',
+              'https://png.pngtree.com/thumb_back/fh260/background/20241018/pngtree-landscape-of-cornfield-and-green-field-with-sunset-on-the-farm-image_16419565.jpg',
               fit: BoxFit.cover,
               errorBuilder: (context, error, stackTrace) {
                 return Container(
