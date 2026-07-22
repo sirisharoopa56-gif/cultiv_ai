@@ -13,7 +13,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
   late final Animation<Offset> _marqueeAnimation;
   final _formKey = GlobalKey<FormState>();
   final _fullNameController = TextEditingController();
-  final _usernameController = TextEditingController();
+  final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
   final _authService = AuthService();
@@ -53,7 +53,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
     try {
       if (_isLogin) {
         await _authService.login(
-          _usernameController.text,
+          _emailController.text,
           _passwordController.text,
         );
 
@@ -63,7 +63,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
       } else {
         await _authService.register(
           _fullNameController.text,
-          _usernameController.text,
+          _emailController.text,
           _passwordController.text,
           _confirmPasswordController.text,
         );
@@ -194,15 +194,23 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                           ),
                         if (!_isLogin) const SizedBox(height: 12),
                         TextFormField(
-                          controller: _usernameController,
+                          controller: _emailController,
                           decoration: const InputDecoration(
-                            labelText: 'Username',
+                            labelText: 'Email',
                             prefixIcon: Icon(Icons.person),
                             border: OutlineInputBorder(),
                           ),
-                          validator: (value) => value == null || value.trim().isEmpty
-                              ? 'Enter a username'
-                              : null,
+                          validator: (value) {
+                              if (value == null || value.trim().isEmpty) {
+                                return 'Enter your email';
+                              }
+
+                              if (!value.contains('@')) {
+                                return 'Enter a valid email';
+                              }
+
+                              return null;
+                            }
                         ),
                         const SizedBox(height: 12),
                         TextFormField(

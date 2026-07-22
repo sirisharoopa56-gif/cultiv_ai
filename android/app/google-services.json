@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "426351252007",
+    "project_id": "cultivai-23def",
+    "storage_bucket": "cultivai-23def.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:426351252007:android:2216e884a584965e25f402",
+        "android_client_info": {
+          "package_name": "com.example.irrigation"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDnettVoEEezmi37nJyLhWQln3vvgCypW0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

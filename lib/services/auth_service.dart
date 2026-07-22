@@ -1,51 +1,28 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
-class AuthUser {
-  final String userId;
-  final String username;
-  final String password;
-  final String fullName;
-
-  AuthUser({
-    required this.userId,
-    required this.username,
-    required this.password,
-    required this.fullName,
-  });
-
-  Map<String, dynamic> toJson() => {
-        'userId': userId,
-        'username': username,
-        'password': password,
-        'fullName': fullName,
-      };
-
-  factory AuthUser.fromJson(Map<dynamic, dynamic> json) => AuthUser(
-        userId: json['userId'] as String,
-        username: json['username'] as String,
-        password: json['password'] as String,
-        fullName: (json['fullName'] as String?) ?? '',
-      );
-}
-
 class AuthService {
-  static const String _usersBoxName = 'auth_users';
   static const String _activeUserBoxName = 'active_user';
 
-  Future<Box> _getUsersBox() async => Hive.openBox(_usersBoxName);
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  Future<Box> _getActiveUserBox() async => Hive.openBox(_activeUserBoxName);
+  Future<Box> _getActiveUserBox() async {
+    return Hive.openBox(_activeUserBoxName);
+  }
 
   Future<Box> getUserDataBox(String dataKey) async {
-    final userId = await getActiveUserId();
-    if (userId == null || userId.isEmpty) {
+    final uid = await getActiveUserId();
+
+    if (uid == null || uid.isEmpty) {
       throw Exception('No active user');
     }
 
-    return Hive.openBox('${dataKey}_$userId');
+    return Hive.openBox('${dataKey}_$uid');
   }
 
-  Future<void> _ensureUserDataBoxes(String userId) async {
+  Future<void> _ensureUserDataBoxes(String uid) async {
     final dataKeys = [
       'profile',
       'attendance',
@@ -57,81 +34,131 @@ class AuthService {
       'crop_plots',
     ];
 
-    for (final dataKey in dataKeys) {
-      await Hive.openBox('${dataKey}_$userId');
+    for (final key in dataKeys) {
+      await Hive.openBox('${key}_$uid');
     }
   }
 
-  Future<String> register(
+  /// REGISTER
+  Future<void> register(
     String fullName,
-    String username,
+    String email,
     String password,
     String confirmPassword,
   ) async {
-    final trimmedName = fullName.trim();
-    final normalizedUsername = username.trim().toLowerCase();
-
-    if (trimmedName.isEmpty) {
+    if (fullName.trim().isEmpty) {
       throw Exception('Full name is required');
     }
 
-    if (normalizedUsername.isEmpty || password.isEmpty) {
-      throw Exception('Username and password are required');
+    if (email.trim().isEmpty) {
+      throw Exception('Email is required');
+    }
+
+    if (password.isEmpty) {
+      throw Exception('Password is required');
     }
 
     if (password != confirmPassword) {
-      throw Exception('Passwords do not match.');
+      throw Exception('Passwords do not match');
     }
 
-    final box = await _getUsersBox();
-    if (box.containsKey(normalizedUsername)) {
-      throw Exception('Username already exists. Please choose another username.');
+    try {
+      final credential = await _auth.createUserWithEmailAndPassword(
+        email: email.trim(),
+        password: password,
+      );
+
+      final uid = credential.user!.uid;
+
+      await _firestore.collection('users').doc(uid).set({
+        'uid': uid,
+        'fullName': fullName.trim(),
+        'email': email.trim(),
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+
+      final activeUserBox = await _getActiveUserBox();
+      await activeUserBox.put('current_user_id', uid);
+
+      await _ensureUserDataBoxes(uid);
+    } on FirebaseAuthException catch (e) {
+      switch (e.code) {
+        case 'email-already-in-use':
+          throw Exception('This email is already registered.');
+
+        case 'invalid-email':
+          throw Exception('Please enter a valid email.');
+
+        case 'weak-password':
+          throw Exception('Password must be at least 6 characters.');
+
+        default:
+          throw Exception(e.message ?? 'Registration failed.');
+      }
     }
-
-    final user = AuthUser(
-      userId: DateTime.now().microsecondsSinceEpoch.toString(),
-      username: username.trim(),
-      password: password,
-      fullName: trimmedName,
-    );
-
-    await box.put(normalizedUsername, user.toJson());
-    await _ensureUserDataBoxes(user.userId);
-
-    return user.userId;
   }
 
-  Future<String> login(String username, String password) async {
-    final normalizedUsername = username.trim().toLowerCase();
-    if (normalizedUsername.isEmpty || password.isEmpty) {
-      throw Exception('Username and password are required');
+  /// LOGIN
+  Future<void> login(
+    String email,
+    String password,
+  ) async {
+    try {
+      final credential = await _auth.signInWithEmailAndPassword(
+        email: email.trim(),
+        password: password,
+      );
+
+      final uid = credential.user!.uid;
+
+      final userDoc =
+          await _firestore.collection('users').doc(uid).get();
+
+      if (!userDoc.exists) {
+        throw Exception('User profile not found.');
+      }
+
+      final activeUserBox = await _getActiveUserBox();
+      await activeUserBox.put('current_user_id', uid);
+
+      await _ensureUserDataBoxes(uid);
+    } on FirebaseAuthException catch (e) {
+      switch (e.code) {
+        case 'invalid-email':
+          throw Exception('Please enter a valid email.');
+
+        case 'user-not-found':
+          throw Exception('No account found with this email.');
+
+        case 'wrong-password':
+          throw Exception('Incorrect password.');
+
+        case 'invalid-credential':
+          throw Exception('Invalid email or password.');
+
+        default:
+          throw Exception(e.message ?? 'Login failed.');
+      }
     }
-
-    final box = await _getUsersBox();
-    final data = box.get(normalizedUsername);
-    if (data == null) {
-      throw Exception('Account not found. Please create an account first.');
-    }
-
-    final user = AuthUser.fromJson(data);
-    if (user.password != password) {
-      throw Exception('Incorrect password. Please try again.');
-    }
-
-    final activeUserBox = await _getActiveUserBox();
-    await activeUserBox.put('current_user_id', user.userId);
-    await _ensureUserDataBoxes(user.userId);
-
-    return user.userId;
   }
 
+  /// CURRENT USER
   Future<String?> getActiveUserId() async {
+    final currentUser = _auth.currentUser;
+
+    if (currentUser != null) {
+      return currentUser.uid;
+    }
+
     final box = await _getActiveUserBox();
     return box.get('current_user_id') as String?;
   }
 
+  /// LOGOUT
   Future<void> logout() async {
+    await _auth.signOut();
+
     final box = await _getActiveUserBox();
-    await box.delete('current_user_id');
+    await box.clear();
   }
 }
